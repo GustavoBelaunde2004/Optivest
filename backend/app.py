@@ -5,11 +5,25 @@ from dotenv import load_dotenv
 from gemini import GeminiService
 from portfolio_optimizer import PortfolioOptimizer
 from stock_data_service import StockDataService
-
+from flask_sqlalchemy import SQLAlchemy
+from models import db 
+from auth import auth_bp
+from flask import session
+from models import db, User, Portfolio, PortfolioStock, ValidatedStock
+import json
 
 load_dotenv()
 
+from auth import auth_bp
+
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portfolio.db'
+db.init_app(app)
+app.secret_key = "key"
+
+app.register_blueprint(auth_bp, url_prefix="/auth")
+
 # Configure CORS for frontend integration
 CORS(app, origins=[
     "http://localhost:5173",  # React dev server,  # Alternative React port
@@ -223,6 +237,107 @@ def optimize_portfolio():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"Portfolio optimization failed: {str(e)}"}), 500
+    
+
+@app.route('/api/portfolio/save', methods=['POST'])
+def save_portfolio():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "User not logged in"}), 401
+
+    data = request.get_json()
+    stocks = data.get('stocks', [])
+    projected_return = data.get('projected_return', 0.0)
+    name = data.get('name', f"My Portfolio {len(stocks)} stocks")
+
+    if not stocks:
+        return jsonify({"error": "No stocks provided"}), 400
+
+    portfolio = Portfolio(user_id=user_id, name=name, projected_return=projected_return)
+    db.session.add(portfolio)
+    db.session.flush()
+
+    for stock in stocks:
+        symbol = stock.get('symbol')
+        weight = stock.get('weight')
+
+        # Convert to folat
+        def parse_number(value):
+            try:
+                if isinstance(value, str):
+                    value = value.replace('$', '').replace(',', '').strip()
+                    if value.endswith('B'):
+                        return float(value[:-1]) * 1e9
+                    elif value.endswith('M'):
+                        return float(value[:-1]) * 1e6
+                    else:
+                        return float(value)
+                return float(value)
+            except:
+                return None
+
+        current_price = parse_number(stock.get('current_price'))
+        market_cap = parse_number(stock.get('market_cap'))
+
+        # "memo"
+        if not ValidatedStock.query.filter_by(symbol=symbol).first():
+            db.session.add(ValidatedStock(
+                symbol=symbol,
+                name=stock.get('name'),
+                description=stock.get('description'),
+                industry=stock.get('industry'),
+                current_price=current_price,
+                market_cap=market_cap,
+                quality_score=stock.get('quality_score') or 0,
+                validation_metrics=json.dumps(stock.get('validation_metrics', {})),
+                validation_checks=json.dumps(stock.get('validation_checks', {}))
+            ))
+
+        db.session.add(PortfolioStock(
+            portfolio_id=portfolio.id,
+            stock_symbol=symbol,
+            weight=weight
+        ))
+
+    db.session.commit()
+    return jsonify({"message": "Portfolio saved", "portfolio_id": portfolio.id})
+
+@app.route('/api/portfolio/list', methods=['GET'])
+def list_user_portfolios():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "User not logged in"}), 401
+
+    portfolios = Portfolio.query.filter_by(user_id=user_id).all()
+    result = []
+
+    for p in portfolios:
+        stocks = PortfolioStock.query.filter_by(portfolio_id=p.id).all()
+        stock_data = []
+
+        for s in stocks:
+            stock = ValidatedStock.query.filter_by(symbol=s.stock_symbol).first()
+            stock_data.append({
+                "symbol": s.stock_symbol,
+                "weight": s.weight,
+                "name": stock.name,
+                "industry": stock.industry,
+                "quality_score": stock.quality_score
+            })
+
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "created_at": p.created_at,
+            "projected_return": p.projected_return,
+            "stocks": stock_data
+        })
+
+    return jsonify({"portfolios": result})
+
+
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)
