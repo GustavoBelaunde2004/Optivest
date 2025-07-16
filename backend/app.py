@@ -5,11 +5,17 @@ from dotenv import load_dotenv
 from gemini import GeminiService
 from portfolio_optimizer import PortfolioOptimizer
 from stock_data_service import StockDataService
+from flask_sqlalchemy import SQLAlchemy
+from models import db 
 
 
 load_dotenv()
 
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portfolio.db'
+db.init_app(app)
+
 # Configure CORS for frontend integration
 CORS(app, origins=[
     "http://localhost:3000",  # React dev server
@@ -227,4 +233,6 @@ def optimize_portfolio():
         return jsonify({"error": f"Portfolio optimization failed: {str(e)}"}), 500
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)
