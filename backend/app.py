@@ -22,13 +22,17 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portfolio.db'
 db.init_app(app)
 app.secret_key = "key"
 
+# Initialize database tables
+with app.app_context():
+    db.create_all()
+
 app.register_blueprint(auth_bp, url_prefix="/auth")
 
 # Configure CORS for frontend integration
 CORS(app, origins=[
     "http://localhost:5173",  # React dev server,  # Alternative React port
     "http://127.0.0.1:5173",
-])
+], supports_credentials=True)
 
 # Initialize services
 gemini_service = GeminiService(os.getenv('GEMINI_API_KEY'))

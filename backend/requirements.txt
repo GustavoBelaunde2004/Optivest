@@ -8,3 +8,6 @@ scipy
 matplotlib
 python-dotenv
 cvxpy
+flask_sqlalchemy
+requests
+werkzeug

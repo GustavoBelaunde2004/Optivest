@@ -1,11 +1,20 @@
 import './index.css';
 import { useState, useEffect } from 'react';
 import image from "/assets/piechart5.jpg"
+import ExperienceSelection from './ExperienceSelection';
 
 function App() {
 
-  const [healthData, setHealthData] = useState('');
+  const [healthData, setHealthData] = useState(''); //keep this for backend health check
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [showExperienceSelection, setShowExperienceSelection] = useState(false);
 
+  // Used to check if backend is running
   const getHealthCheck = async () =>{
     const response = await fetch("http://localhost:5000/api/health");
     const data = await response.json();
@@ -17,6 +26,81 @@ function App() {
     getHealthCheck()
   }, []);
 
+  //Login function
+  const handleLogin = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await fetch("http://localhost:5000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include' 
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsLoggedIn(true);
+        console.log("Login successful", data); //logic success
+        
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Login failed. Invalid credentials."); //incorrect username/password
+      }
+    } catch (err) {
+      setError("Login failed."); //straight up failed
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  //Register function
+  const handleRegister = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const response = await fetch("http://localhost:5000/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Registration successful!", data);
+        setError(''); // clear prev errors
+        setShowExperienceSelection(true); // Show experience selection instead of switching back to login
+        setUsername('');
+        setPassword('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Registration failed.");
+      }
+    } catch (err) {
+      setError("Registration failed. Network or server error.");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExperienceSelection = (experience) => {
+    console.log(`User selected: ${experience}`);
+    // For now, just log the selection, ill add more later on
+  };
+
+  // If showing experience selection, render that instead of login/register
+  if (showExperienceSelection) {
+    return (
+      <ExperienceSelection onExperienceSelect={handleExperienceSelection} />
+    );
+  }
 
   return (
     <>
@@ -25,28 +109,66 @@ function App() {
       <div className = "flex flex-row shadow-2xl rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md transition-all duration-300 hover:shadow-3xl hover:-translate-y-2 hover:scale-105" style={{height: '600px', minWidth: '900px'}}>
         {/* Login Container */}
         <div className = "flex flex-col items-center justify-center text-center gap-8 bg-white flex-1 rounded-2xl rounded-tr-none rounded-br-none"> 
-           <h1 className = "text-4xl font-bold"> Welcome</h1>
+           <h1 className = "text-4xl font-bold"> {showRegister ? 'Register' : 'Welcome'}</h1>
            
            {/* Username Input */}
            <div className = "flex flex-col text-2xl text-left gap-1">
               <span>Username</span>
-              <input type = "text" className = "rounded-md p-1 border-2 outline-none focus:border-cyan-400 focus: bg-slate-50"/>
+              <input 
+                type = "text" 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className = "rounded-md p-1 border-2 outline-none focus:border-cyan-400 focus: bg-slate-50"
+              />
            </div>
 
            {/* Password Input, same layout  */}
            <div className = "flex flex-col text-2xl text-left gap-1">
               <span>Password</span>
-              <input type = "password" className = "rounded-md p-1 border-2 outline-none focus:border-cyan-400 focus: bg-slate-50"/>
+              <input 
+                type = "password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className = "rounded-md p-1 border-2 outline-none focus:border-cyan-400 focus: bg-slate-50"
+              />
            
               {/* Remember me checkbox inside same password div, might remove later if logic doesn't work with backend*/}
-              <div className = "flex gap-1 items-center">
-                <input type = "checkbox"/>
-                <span className = "text-base">Remember me</span>
-              </div>
+              {!showRegister && (
+                <div className = "flex gap-1 items-center">
+                  <input type = "checkbox"/>
+                  <span className = "text-base">Remember me</span>
+                </div>
+              )}
            </div>
 
-           <button className = "px-10 py-2 text-2xl rounded-md border-2 bg-gradient-to-tr from-green-400 to-blue-500 hover:from-pink-500 hover:to-yellow-500 text-white"> Login </button>
-           <p> Don't have an account? <a href = "#" className = "text-blue-400 hover:underline">Register now</a></p>       
+           {/* Error Display */}
+           {error && (
+             <div className="text-red-500 text-sm bg-red-100 p-2 rounded">
+               {error}
+             </div>
+           )}
+
+           <button 
+             onClick={showRegister ? handleRegister : handleLogin}
+             disabled={isLoading}
+             className = "px-10 py-2 text-2xl rounded-md border-2 bg-gradient-to-tr from-green-400 to-blue-500 hover:from-cyan-400 hover:to-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105"
+           > 
+             {isLoading ? (showRegister ? 'Registering...' : 'Logging in...') : (showRegister ? 'Register' : 'Login')} 
+           </button>
+           <p> 
+             {showRegister ? 'Already have an account?' : "Don't have an account?"} 
+             <button 
+               onClick={() => {
+                 setShowRegister(!showRegister);
+                 setError('');
+                 setUsername('');
+                 setPassword('');
+               }}
+               className = "text-blue-400 hover:underline ml-1"
+             >
+               {showRegister ? 'Login now' : 'Register now'}
+             </button>
+           </p>       
         </div>
         <div className="flex-1 h-full">
           <img
