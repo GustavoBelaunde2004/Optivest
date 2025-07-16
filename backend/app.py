@@ -304,6 +304,40 @@ def save_portfolio():
     db.session.commit()
     return jsonify({"message": "Portfolio saved", "portfolio_id": portfolio.id})
 
+@app.route('/api/portfolio/list', methods=['GET'])
+def list_user_portfolios():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "User not logged in"}), 401
+
+    portfolios = Portfolio.query.filter_by(user_id=user_id).all()
+    result = []
+
+    for p in portfolios:
+        stocks = PortfolioStock.query.filter_by(portfolio_id=p.id).all()
+        stock_data = []
+
+        for s in stocks:
+            stock = ValidatedStock.query.filter_by(symbol=s.stock_symbol).first()
+            stock_data.append({
+                "symbol": s.stock_symbol,
+                "weight": s.weight,
+                "name": stock.name,
+                "industry": stock.industry,
+                "quality_score": stock.quality_score
+            })
+
+        result.append({
+            "id": p.id,
+            "name": p.name,
+            "created_at": p.created_at,
+            "projected_return": p.projected_return,
+            "stocks": stock_data
+        })
+
+    return jsonify({"portfolios": result})
+
+
 
 if __name__ == '__main__':
     with app.app_context():
