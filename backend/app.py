@@ -12,10 +12,8 @@ load_dotenv()
 app = Flask(__name__)
 # Configure CORS for frontend integration
 CORS(app, origins=[
-    "http://localhost:3000",  # React dev server
-    "http://localhost:3001",  # Alternative React port
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001"
+    "http://localhost:5173",  # React dev server,  # Alternative React port
+    "http://127.0.0.1:5173",
 ])
 
 # Initialize services
