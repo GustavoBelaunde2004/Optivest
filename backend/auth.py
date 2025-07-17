@@ -30,12 +30,15 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
+    remember = data.get('remember', False)
 
     user = User.query.filter_by(username=username).first()
+    
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid username or password"}), 401
 
     session['user_id'] = user.id
+    session.permanent = remember 
     return jsonify({"message": "Login successful", "user_id": user.id})
 
 
