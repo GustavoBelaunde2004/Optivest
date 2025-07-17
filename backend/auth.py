@@ -22,6 +22,10 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
+
+    session['user_id'] = new_user.id
+    session.permanent = True
+
     return jsonify({"message": "User registered successfully"}), 201
 
 

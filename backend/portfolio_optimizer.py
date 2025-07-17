@@ -14,54 +14,45 @@ class PortfolioOptimizer:
         
         return portfolio_return, portfolio_volatility
     
-    def optimize_portfolio(self, price_data, method="max_sharpe", min_allocation=0.05, min_expected_return=0.01):
-        """Optimize portfolio using Modern Portfolio Theory, filtering out poor assets first"""
+    def optimize_portfolio(self, price_data, method="max_sharpe"):
+        """Optimize portfolio using Modern Portfolio Theory"""
         import time
         start_time = time.time()
-
-        print(f"Starting portfolio optimization...")
-        print(f"Data shape: {price_data.shape}")
-        print(f"Method: {method}")
-
+        
+        print(f"🔄 Starting portfolio optimization...")
+        print(f"   Data shape: {price_data.shape}")
+        print(f"   Method: {method}")
+        
         # Calculate returns
         returns = price_data.pct_change().dropna()
-
-        # Filter out assets with negative or very low expected returns
-        mu = returns.mean() * 252
-        good_assets = mu[mu > min_expected_return].index.tolist()
-        if len(good_assets) < 2:
-            print(f" Not enough assets with positive expected return. Using all assets.")
-            good_assets = mu.index.tolist()
-        else:
-            print(f"   Filtering assets with expected return > {min_expected_return*100:.2f}%: {good_assets}")
-            returns = returns[good_assets]
-            price_data = price_data[good_assets]
-            mu = mu[good_assets]
-
+        
         n_assets = len(returns.columns)
-        print(f"   Number of assets after filtering: {n_assets}")
+        print(f"   Number of assets: {n_assets}")
         print(f"   Data points: {len(returns)}")
-
+        
+        # Mean returns (annualized)
+        mu = returns.mean() * 252
+        
         # Covariance matrix (annualized)
         cov_matrix = returns.cov() * 252
-
+        
         print(f"   Computing optimization...")
-
+        
         if method == "max_sharpe":
-            result = self._maximize_sharpe_ratio(mu, cov_matrix, n_assets, min_allocation=min_allocation)
+            result = self._maximize_sharpe_ratio(mu, cov_matrix, n_assets)
         elif method == "min_variance":
-            result = self._minimize_variance(cov_matrix, n_assets, min_allocation=min_allocation)
+            result = self._minimize_variance(cov_matrix, n_assets)
         else:
             # Default to equal weights if optimization fails
             result = np.array([1/n_assets] * n_assets)
-
+        
         end_time = time.time()
         optimization_time = end_time - start_time
         print(f"✅ Optimization completed in {optimization_time:.2f} seconds")
-
+        
         return result
     
-    def _maximize_sharpe_ratio(self, mu, cov_matrix, n_assets, risk_free_rate=0.02, min_allocation=0.05):
+    def _maximize_sharpe_ratio(self, mu, cov_matrix, n_assets, risk_free_rate=0.02):
         """Maximize Sharpe ratio using convex optimization"""
         try:
             print(f"   🔢 Setting up optimization problem...")
@@ -114,11 +105,11 @@ class PortfolioOptimizer:
                         print(f"   🔄 Applying minimum 1% constraint for practical trading...")
             
             # Apply minimum allocation constraint if needed
-            print(f"   🔒 Applying constraints: min {min_allocation*100:.0f}%, max 50% per asset")
+            print(f"   🔒 Applying constraints: min 1%, max 50% per asset")
             
             constrained_constraints = [
                 cp.sum(weights) == 1,  # Weights sum to 1
-                weights >= min_allocation,       # Minimum allocation (for practical trading)
+                weights >= 0.01,       # Minimum 1% allocation (for practical trading)
                 weights <= 0.5         # Maximum 50% allocation (for diversification)
             ]
             
@@ -138,12 +129,12 @@ class PortfolioOptimizer:
                     
                     print(f"   📊 Final allocation: {[f'{w:.1%}' for w in optimal_weights]}")
                     
-                    # Explain why we got min allocations
-                    min_weight_count = np.sum(optimal_weights <= min_allocation + 0.001)
+                    # Explain why we got 1% allocations
+                    min_weight_count = np.sum(optimal_weights <= 0.011)  # Close to 1%
                     if min_weight_count > 0:
-                        print(f"   💡 {min_weight_count} assets at ~{min_allocation*100:.0f}% because:")
+                        print(f"   💡 {min_weight_count} assets at ~1% because:")
                         print(f"      - Lower expected returns or higher risk")
-                        print(f"      - Minimum {min_allocation*100:.0f}% constraint prevents zero allocation")
+                        print(f"      - Minimum 1% constraint prevents zero allocation")
                         print(f"      - Optimizer wants diversification benefits")
                     
                     return optimal_weights
@@ -157,7 +148,7 @@ class PortfolioOptimizer:
             traceback.print_exc()
             return np.array([1/n_assets] * n_assets)
     
-    def _minimize_variance(self, cov_matrix, n_assets, min_allocation=0.05):
+    def _minimize_variance(self, cov_matrix, n_assets):
         """Minimize portfolio variance"""
         try:
             weights = cp.Variable(n_assets)
@@ -168,7 +159,7 @@ class PortfolioOptimizer:
             # Constraints
             constraints = [
                 cp.sum(weights) == 1,
-                weights >= min_allocation,
+                weights >= 0.01,
                 weights <= 0.5
             ]
             
