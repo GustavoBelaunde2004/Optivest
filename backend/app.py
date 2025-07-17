@@ -11,6 +11,8 @@ from auth import auth_bp
 from flask import session
 from models import db, User, Portfolio, PortfolioStock, ValidatedStock
 import json
+from datetime import timedelta
+
 
 load_dotenv()
 
@@ -27,6 +29,9 @@ with app.app_context():
     db.create_all()
 
 app.register_blueprint(auth_bp, url_prefix="/auth")
+
+app.permanent_session_lifetime = timedelta(days=30)  # or any number of days
+
 
 # Configure CORS for frontend integration
 CORS(app, origins=[
