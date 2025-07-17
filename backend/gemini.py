@@ -25,8 +25,8 @@ class GeminiService:
     def get_stock_recommendations(self, industries):
         """Get stock recommendations for selected industries"""
         
-        # Calculate stocks per industry (aim for 30 initial recommendations)
-        stocks_per_industry = max(3, 30 // len(industries))
+        # Calculate stocks per industry (aim for 15 initial recommendations)
+        stocks_per_industry = max(3, 15 // len(industries))
         
         prompt = f"""
 You are a financial advisor specializing in beginner-friendly investments.
@@ -77,7 +77,7 @@ Only include real, currently traded stocks with valid ticker symbols.
                         stock['symbol'] = stock['symbol'].upper().strip()
                         validated_stocks.append(stock)
                 
-                return validated_stocks[:30]  # Allow more initial recommendations for filtering
+                return validated_stocks[:15]  # Allow more initial recommendations for filtering
             else:
                 raise ValueError("Could not parse JSON from Gemini response")
                 

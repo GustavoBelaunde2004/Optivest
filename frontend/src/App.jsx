@@ -1,5 +1,5 @@
 import './index.css';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import image from "/assets/piechart5.jpg"
 import ExperienceSelection from './ExperienceSelection';
 import IndustrySelection from './IndustrySelection';
@@ -22,6 +22,11 @@ function App() {
   const [selectedIndustries, setSelectedIndustries] = useState([]);
   const [showPieChart, setShowPieChart] = useState(false);
   const [finalStocks, setFinalStocks] = useState([]);
+  const [showPortfolios, setShowPortfolios] = useState(false);
+  const [portfolios, setPortfolios] = useState([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState(null);
+  const [portfolioError, setPortfolioError] = useState('');
+  const modalRef = useRef();
 
   // Used to check if backend is running
   const getHealthCheck = async () =>{
@@ -108,12 +113,35 @@ function App() {
     }
   };
 
+  const fetchPortfolios = async () => {
+    setPortfolioError('');
+    try {
+      const res = await fetch('http://localhost:5000/api/portfolio/list', { credentials: 'include' });
+      const data = await res.json();
+      if (data.portfolios) {
+        setPortfolios(data.portfolios);
+      } else {
+        setPortfolioError(data.error || 'Failed to fetch portfolios.');
+      }
+    } catch {
+      setPortfolioError('Failed to fetch portfolios.');
+    }
+  };
+
   // If showing pie chart, render that
   if (showPieChart) {
     return (
       <PortfolioPieChart
         selectedStocks={finalStocks}
-        onBack={() => setShowPieChart(false)}
+        onBack={() => {
+          setShowPieChart(false);
+          setShowExperienceSelection(false);
+          setShowIndustrySelection(false);
+          setShowStockSelection(false);
+          setSelectedIndustries([]);
+          setFinalStocks([]);
+          // Do not log out the user
+        }}
       />
     );
   }
@@ -147,6 +175,74 @@ function App() {
   if (showExperienceSelection) {
     return (
       <ExperienceSelection onExperienceSelect={handleExperienceSelection} />
+    );
+  }
+
+  // After login, show View Portfolios button
+  if (isLoggedIn && !showExperienceSelection && !showIndustrySelection && !showStockSelection && !showPieChart) {
+    return (
+      <section className="min-h-screen flex flex-col items-center justify-center font-mono bg-gradient-to-r from-cyan-500 via-indigo-500 to-sky-500">
+        <h1 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">Welcome!</h1>
+        <button
+          className="mb-8 px-8 py-4 rounded-lg bg-white text-blue-700 font-bold text-2xl shadow-lg hover:bg-blue-100 transition"
+          onClick={() => { setShowPortfolios(true); fetchPortfolios(); }}
+        >
+          View Portfolios
+        </button>
+        {showPortfolios && (
+          <div className="w-full max-w-5xl flex flex-row gap-6 overflow-x-auto pb-4">
+            {portfolios.length === 0 && !portfolioError && (
+              <div className="text-white text-xl">No portfolios found.</div>
+            )}
+            {portfolioError && <div className="text-red-500 bg-white p-2 rounded">{portfolioError}</div>}
+            {portfolios.map((p) => (
+              <div
+                key={p.id}
+                className="min-w-[260px] max-w-xs bg-white rounded-xl shadow-lg p-6 flex flex-col items-center cursor-pointer hover:scale-105 transition border-2 border-blue-200"
+                onClick={() => setSelectedPortfolio(p)}
+              >
+                <div className="font-bold text-blue-700 text-lg mb-2 truncate w-full text-center">{p.name}</div>
+                <div className="text-gray-500 text-sm mb-2">{new Date(p.created_at).toLocaleString()}</div>
+                <div className="text-blue-900 font-semibold">{p.stocks.length} stocks</div>
+                <div className="text-green-600 font-bold mt-2">Projected Return: {p.projected_return ? (p.projected_return * 100).toFixed(2) + '%' : 'N/A'}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Modal for portfolio details */}
+        {selectedPortfolio && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" onClick={e => { if (e.target === modalRef.current) setSelectedPortfolio(null); }} ref={modalRef}>
+            <div className="bg-white rounded-2xl shadow-2xl p-8 min-w-[340px] max-w-lg w-full relative">
+              <button className="absolute top-2 right-2 text-2xl text-gray-400 hover:text-blue-600" onClick={() => setSelectedPortfolio(null)}>&times;</button>
+              <h2 className="text-2xl font-bold text-blue-700 mb-4 text-center">{selectedPortfolio.name}</h2>
+              <div className="text-gray-500 text-center mb-2">{new Date(selectedPortfolio.created_at).toLocaleString()}</div>
+              <div className="mb-4 text-center text-green-600 font-bold">Projected Return: {selectedPortfolio.projected_return ? (selectedPortfolio.projected_return * 100).toFixed(2) + '%' : 'N/A'}</div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-blue-100">
+                      <th className="p-2">Stock</th>
+                      <th className="p-2">Industry</th>
+                      <th className="p-2">Weight</th>
+                      <th className="p-2">Quality</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPortfolio.stocks.map((s, idx) => (
+                      <tr key={s.symbol} className={idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'}>
+                        <td className="p-2 font-semibold text-blue-900">{s.name}</td>
+                        <td className="p-2 text-gray-700">{s.industry}</td>
+                        <td className="p-2 text-blue-700">{(s.weight * 100).toFixed(2)}%</td>
+                        <td className="p-2 text-green-700">{s.quality_score ? s.quality_score.toFixed(1) : 'N/A'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
     );
   }
 

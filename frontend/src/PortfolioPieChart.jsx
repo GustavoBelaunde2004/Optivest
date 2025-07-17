@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Improved, more distinct blue/cyan/purple palette
@@ -44,10 +44,15 @@ function PortfolioPieChart({ selectedStocks, onBack }) {
   const [allocations, setAllocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [saveStatus, setSaveStatus] = useState('');
+  const hasSaved = useRef(false);
+  const [riskMetrics, setRiskMetrics] = useState(null);
 
   useEffect(() => {
     setLoading(true);
     setError('');
+    setSaveStatus('');
+    hasSaved.current = false;
     fetch('http://localhost:5000/api/portfolio/optimize', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -57,6 +62,7 @@ function PortfolioPieChart({ selectedStocks, onBack }) {
       .then(data => {
         if (data.allocations) {
           setAllocations(data.allocations);
+          setRiskMetrics(data.risk_metrics || null);
         } else {
           setError(data.error || 'Failed to get portfolio allocations.');
         }
@@ -68,6 +74,36 @@ function PortfolioPieChart({ selectedStocks, onBack }) {
       });
   }, [selectedStocks]);
 
+  // Save portfolio after allocations are set, only once
+  useEffect(() => {
+    if (!loading && allocations.length > 0 && !hasSaved.current) {
+      hasSaved.current = true;
+      const projected_return = riskMetrics && riskMetrics.annual_return ? riskMetrics.annual_return : 0;
+      fetch('http://localhost:5000/api/portfolio/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          stocks: allocations.map(a => ({
+            ...a,
+            ...selectedStocks.find(s => s.symbol === a.symbol)
+          })),
+          projected_return,
+          name: undefined // Let backend auto-name
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.message === 'Portfolio saved') {
+            setSaveStatus('Portfolio saved!');
+          } else {
+            setSaveStatus('Failed to save portfolio.');
+          }
+        })
+        .catch(() => setSaveStatus('Failed to save portfolio.'));
+    }
+  }, [loading, allocations, riskMetrics, selectedStocks]);
+
   if (loading) return <div className="text-center text-xl text-white">Loading portfolio...</div>;
   if (error) return <div className="text-center text-red-500">{error}</div>;
 
@@ -75,6 +111,7 @@ function PortfolioPieChart({ selectedStocks, onBack }) {
     <section className="min-h-screen flex flex-col items-center justify-center font-mono bg-gradient-to-r from-cyan-500 via-indigo-500 to-sky-500">
       <div className="bg-white rounded-2xl shadow-2xl p-10 flex flex-col items-center" style={{ minWidth: 540, minHeight: 620 }}>
         <h1 className="text-3xl font-bold text-blue-700 mb-6">Your Optimized Portfolio</h1>
+        {saveStatus && <div className={`mb-2 text-lg font-semibold ${saveStatus.includes('saved') ? 'text-green-600' : 'text-red-500'}`}>{saveStatus}</div>}
         <ResponsiveContainer width={520} height={520}>
           <PieChart margin={{ top: 24, right: 24, left: 24, bottom: 24 }}>
             <Pie

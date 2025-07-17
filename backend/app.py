@@ -301,6 +301,10 @@ def optimize_portfolio():
 @app.route('/api/portfolio/save', methods=['POST'])
 def save_portfolio():
     user_id = session.get('user_id')
+    print(f"[DEBUG] save_portfolio: user_id={user_id}")
+    if user_id:
+        user = db.session.get(User, user_id)
+        print(f"[DEBUG] save_portfolio: username={user.username if user else 'N/A'}")
     if not user_id:
         return jsonify({"error": "User not logged in"}), 401
 
@@ -364,6 +368,10 @@ def save_portfolio():
 @app.route('/api/portfolio/list', methods=['GET'])
 def list_user_portfolios():
     user_id = session.get('user_id')
+    print(f"[DEBUG] list_user_portfolios: user_id={user_id}")
+    if user_id:
+        user = db.session.get(User, user_id)
+        print(f"[DEBUG] list_user_portfolios: username={user.username if user else 'N/A'}")
     if not user_id:
         return jsonify({"error": "User not logged in"}), 401
 

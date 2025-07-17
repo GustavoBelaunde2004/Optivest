@@ -5,6 +5,7 @@ function IndustrySelection({ onConfirm }) {
   const [selected, setSelected] = useState([]); //state for selected industries
   const [loading, setLoading] = useState(true); //state for loading
   const [error, setError] = useState(''); //state for error when fetching industries
+  const [limitMsg, setLimitMsg] = useState(''); // state for limit message
 
   //fetch industries from backend
   useEffect(() => {
@@ -21,11 +22,17 @@ function IndustrySelection({ onConfirm }) {
   }, []);
 
   const toggleIndustry = (industry) => {
-    setSelected(sel =>
-      sel.includes(industry)
-        ? sel.filter(i => i !== industry)
-        : [...sel, industry]
-    );
+    setLimitMsg('');
+    setSelected(sel => {
+      if (sel.includes(industry)) {
+        return sel.filter(i => i !== industry);
+      } else if (sel.length < 3) {
+        return [...sel, industry];
+      } else {
+        setLimitMsg('You can select up to 3 industries.');
+        return sel;
+      }
+    });
   };
 
   //if loading, show loading message
@@ -41,9 +48,11 @@ function IndustrySelection({ onConfirm }) {
           <button
             key={industry}
             onClick={() => toggleIndustry(industry)}
+            disabled={!selected.includes(industry) && selected.length >= 3}
             //if selected, show blue, if not, show white
             className={`transition-all duration-300 px-8 py-6 rounded-2xl shadow-lg text-xl font-semibold cursor-pointer select-none border-2 
               ${selected.includes(industry) ? 'bg-blue-400/80 text-white border-blue-600 scale-105' : 'bg-white/80 text-blue-900 border-blue-200 hover:bg-blue-100 hover:scale-105'} 
+              ${!selected.includes(industry) && selected.length >= 3 ? 'opacity-50 cursor-not-allowed' : ''}
               ${idx % 3 === 0 ? 'rotate-2' : idx % 3 === 1 ? '-rotate-2' : 'rotate-1'}
             `}
             style={{ minWidth: '200px', minHeight: '80px', boxShadow: '0 4px 24px 0 rgba(0,0,0,0.08)' }} 
@@ -52,6 +61,7 @@ function IndustrySelection({ onConfirm }) {
           </button>
         ))}
       </div>
+      {limitMsg && <div className="text-red-500 mb-4 text-lg font-semibold">{limitMsg}</div>}
       {/* Confirm button*/}
       <button
         onClick={() => onConfirm(selected)}
