@@ -2,6 +2,7 @@ import './index.css';
 import { useState, useEffect } from 'react';
 import image from "/assets/piechart5.jpg"
 import ExperienceSelection from './ExperienceSelection';
+import IndustrySelection from './IndustrySelection';
 
 function App() {
 
@@ -13,6 +14,8 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showExperienceSelection, setShowExperienceSelection] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showIndustrySelection, setShowIndustrySelection] = useState(false);
 
   // Used to check if backend is running
   const getHealthCheck = async () =>{
@@ -36,7 +39,7 @@ function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, remember: rememberMe }),
         credentials: 'include' 
       });
 
@@ -75,7 +78,8 @@ function App() {
         const data = await response.json();
         console.log("Registration successful!", data);
         setError(''); // clear prev errors
-        setShowExperienceSelection(true); // Show experience selection instead of switching back to login
+        setShowExperienceSelection(true); // Show experience selection
+        setShowIndustrySelection(false); // Reset industry selection
         setUsername('');
         setPassword('');
       } else {
@@ -91,9 +95,24 @@ function App() {
   };
 
   const handleExperienceSelection = (experience) => {
-    console.log(`User selected: ${experience}`);
-    // For now, just log the selection, ill add more later on
+    if (experience === 'beginner') {
+      setShowIndustrySelection(true);
+    } else {
+      // handle experienced path if needed
+    }
   };
+
+  // If showing industry selection, render that
+  if (showIndustrySelection) {
+    return (
+      <IndustrySelection onConfirm={(industries) => {
+        // setSelectedIndustries(industries); // Not needed for now
+        // TODO: proceed to next step with selected industries
+        // For now, just log them and stay on this screen
+        console.log('Selected industries:', industries);
+      }} />
+    );
+  }
 
   // If showing experience selection, render that instead of login/register
   if (showExperienceSelection) {
@@ -135,7 +154,7 @@ function App() {
               {/* Remember me checkbox inside same password div, might remove later if logic doesn't work with backend*/}
               {!showRegister && (
                 <div className = "flex gap-1 items-center">
-                  <input type = "checkbox"/>
+                  <input type = "checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} />
                   <span className = "text-base">Remember me</span>
                 </div>
               )}
@@ -170,6 +189,7 @@ function App() {
              </button>
            </p>       
         </div>
+        {/* Piechart Container */}
         <div className="flex-1 h-full">
           <img
             src={image}

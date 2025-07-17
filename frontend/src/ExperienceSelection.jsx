@@ -1,5 +1,5 @@
 import React from 'react';
-
+//Experience selection comp
 function ExperienceSelection({ onExperienceSelect }) {
   return (
     <section className="min-h-screen flex items-center justify-center font-mono bg-gradient-to-r from-cyan-500 from-10% via-indigo-500 via-50% to-sky-500 to-100%">
@@ -16,6 +16,7 @@ function ExperienceSelection({ onExperienceSelect }) {
         
         {/* Buttons Container */}
         <div className="flex flex-row gap-12 justify-center items-center">
+
           {/* Beginner Button */}
           <button 
             onClick={() => onExperienceSelect('beginner')}
