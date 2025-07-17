@@ -11,8 +11,6 @@ from auth import auth_bp
 from flask import session
 from models import db, User, Portfolio, PortfolioStock, ValidatedStock
 import json
-from datetime import timedelta
-
 
 load_dotenv()
 
@@ -29,9 +27,6 @@ with app.app_context():
     db.create_all()
 
 app.register_blueprint(auth_bp, url_prefix="/auth")
-
-app.permanent_session_lifetime = timedelta(days=30)  # or any number of days
-
 
 # Configure CORS for frontend integration
 CORS(app, origins=[
@@ -69,29 +64,91 @@ def get_industries():
 
 @app.route('/api/stocks/recommend', methods=['POST'])
 def recommend_stocks():
-    """Get stock recommendations based on selected industries"""
+    """Get stock recommendations based on selected industries or validate a custom stock"""
     try:
         data = request.get_json()
         selected_industries = data.get('industries', [])
-        
+        custom_stock = data.get('custom_stock')
+
+        # If custom_stock is provided, validate and return info for that stock
+        if custom_stock:
+            # Use Gemini to extract a stock symbol and company name from the user's message
+            extracted_ticker, extracted_company = gemini_service.extract_stock_symbol(custom_stock)
+            symbol_to_try = extracted_ticker or ''
+            company_to_try = extracted_company or ''
+            stock_info = None
+            tried = []
+            # Try ticker first
+            if symbol_to_try:
+                stock_info = stock_data_service.get_stock_info(symbol_to_try)
+                tried.append(symbol_to_try)
+            # If ticker fails, try company name
+            if not stock_info and company_to_try:
+                stock_info = stock_data_service.get_stock_info(company_to_try)
+                tried.append(company_to_try)
+            if not stock_info:
+                return jsonify({"error": f"Could not find a valid stock for your input. Tried: {', '.join(tried)}"}), 404
+            from stock_validator import StockValidator
+            validator = StockValidator()
+            # Use the symbol from stock_info if available
+            symbol = stock_info.get('symbol', symbol_to_try or company_to_try).upper()
+            stock_dict = {
+                'symbol': symbol,
+                'name': stock_info.get('shortName', symbol),
+                'description': stock_info.get('longBusinessSummary', f"User-requested stock: {symbol}"),
+                'industry': stock_info.get('sector', selected_industries[0] if selected_industries else 'Unknown'),
+                'current_price': stock_info.get('current_price', 0),
+                'market_cap': stock_info.get('market_cap', 0)
+            }
+            validated = validator.validate_stocks([stock_dict], max_stocks=1)
+            quality_score = validated[0]['quality_score'] if validated else 0
+            validation_passed = bool(validated and validated[0]['is_valid'])
+            validation_message = (
+                validated[0]['failure_reason'] if validated and not validated[0]['is_valid'] else "Passed validation"
+            )
+            # Format price and market cap for display (like recommended stocks)
+            try:
+                price = float(stock_info.get('current_price', 0))
+                formatted_price = f"${price:.2f}" if price > 0 else 'N/A'
+            except (ValueError, TypeError):
+                formatted_price = 'N/A'
+            try:
+                market_cap = float(stock_info.get('market_cap', 0))
+                if market_cap > 1_000_000_000:
+                    formatted_market_cap = f"${market_cap/1_000_000_000:.1f}B"
+                elif market_cap > 1_000_000:
+                    formatted_market_cap = f"${market_cap/1_000_000:.1f}M"
+                else:
+                    formatted_market_cap = f"${market_cap:,.0f}"
+            except (ValueError, TypeError):
+                formatted_market_cap = 'N/A'
+            response_stock = {
+                'symbol': symbol,
+                'name': stock_info.get('shortName', symbol),
+                'description': stock_info.get('longBusinessSummary', f"User-requested stock: {symbol}"),
+                'industry': stock_info.get('sector', selected_industries[0] if selected_industries else 'Unknown'),
+                'current_price': formatted_price,
+                'market_cap': formatted_market_cap,
+                'quality_score': quality_score,
+                'validation_passed': validation_passed,
+                'validation_message': validation_message
+            }
+            return jsonify({"stocks": [response_stock]})
+
+        # Normal industry-based recommendations
         if not selected_industries:
             return jsonify({"error": "Please select at least one industry"}), 400
-        
         try:
             # Get validated stock recommendations from Gemini
             recommendations = gemini_service.get_validated_stock_recommendations(selected_industries)
-            
             print(f"   ✅ Validation completed: {len(recommendations) if recommendations else 0} stocks")
-            
             if not recommendations:
                 return jsonify({"error": "No stocks passed quality validation"}), 400
-            
             # Return validated stocks with current prices
             json_safe_stocks = []
             for stock in recommendations:
                 # Get current price and market cap from stock data service
                 stock_info = stock_data_service.get_stock_info(stock['symbol'])
-                
                 # Format price for display
                 if stock_info and stock_info['current_price']:
                     try:
@@ -101,7 +158,6 @@ def recommend_stocks():
                         formatted_price = 'N/A'
                 else:
                     formatted_price = 'N/A'
-                
                 # Format market cap for display
                 if stock_info and stock_info['market_cap']:
                     try:
@@ -116,7 +172,6 @@ def recommend_stocks():
                         formatted_market_cap = 'N/A'
                 else:
                     formatted_market_cap = 'N/A'
-                
                 # Create a clean JSON-serializable copy
                 clean_stock = {
                     'symbol': stock['symbol'],
@@ -126,22 +181,17 @@ def recommend_stocks():
                     'current_price': formatted_price,
                     'market_cap': formatted_market_cap
                 }
-                
                 # Add quality score if available
                 if 'quality_score' in stock:
                     clean_stock['quality_score'] = float(stock['quality_score'])
-                
                 json_safe_stocks.append(clean_stock)
-            
             print(f"   📤 Returning {len(json_safe_stocks)} validated stocks")
             return jsonify({"stocks": json_safe_stocks})
-            
         except Exception as validation_error:
             print(f"❌ Validation error: {validation_error}")
             import traceback
             traceback.print_exc()
             return jsonify({"error": f"Stock validation failed: {str(validation_error)}"}), 500
-        
     except Exception as e:
         print(f"❌ General error: {e}")
         import traceback

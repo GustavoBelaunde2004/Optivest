@@ -129,9 +129,31 @@ Only include real, currently traded stocks with valid ticker symbols.
         print(f"   Generated {len(raw_recommendations)} initial recommendations")
         
         # Validate the recommendations
-        validated_stocks = self.validator.validate_stocks(raw_recommendations, max_stocks=8)
+        validated_stocks = self.validator.validate_stocks(raw_recommendations, max_stocks=20)
         
         if validated_stocks:
             self.validator.display_validation_summary(validated_stocks)
         
         return validated_stocks
+
+    def extract_stock_symbol(self, user_message):
+        prompt = (
+            "Extract the most likely US stock ticker symbol (e.g., TSLA for Tesla) and company name from the following message. "
+            "If a ticker is found, return it. If not, return the company name. If neither, return an empty string.\n"
+            f"Message: {user_message}\n"
+            "Ticker: <ticker>\nCompany: <company>"
+        )
+        try:
+            response = self.model.generate_content(prompt)
+            lines = response.text.strip().split('\n')
+            ticker = ''
+            company = ''
+            for line in lines:
+                if line.lower().startswith('ticker:'):
+                    ticker = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('company:'):
+                    company = line.split(':', 1)[1].strip()
+            return ticker, company
+        except Exception as e:
+            print(f"Gemini extraction error: {e}")
+            return '', ''

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import image from "/assets/piechart5.jpg"
 import ExperienceSelection from './ExperienceSelection';
 import IndustrySelection from './IndustrySelection';
+import StockSelection from './StockSelection';
+import PortfolioPieChart from './PortfolioPieChart';
 
 function App() {
 
@@ -16,6 +18,10 @@ function App() {
   const [showExperienceSelection, setShowExperienceSelection] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showIndustrySelection, setShowIndustrySelection] = useState(false);
+  const [showStockSelection, setShowStockSelection] = useState(false);
+  const [selectedIndustries, setSelectedIndustries] = useState([]);
+  const [showPieChart, setShowPieChart] = useState(false);
+  const [finalStocks, setFinalStocks] = useState([]);
 
   // Used to check if backend is running
   const getHealthCheck = async () =>{
@@ -78,8 +84,8 @@ function App() {
         const data = await response.json();
         console.log("Registration successful!", data);
         setError(''); // clear prev errors
-        setShowExperienceSelection(true); // Show experience selection
-        setShowIndustrySelection(false); // Reset industry selection
+        setShowExperienceSelection(true); 
+        setShowIndustrySelection(false);
         setUsername('');
         setPassword('');
       } else {
@@ -98,18 +104,41 @@ function App() {
     if (experience === 'beginner') {
       setShowIndustrySelection(true);
     } else {
-      // handle experienced path if needed
+      // handle experienced path if needed later
     }
   };
+
+  // If showing pie chart, render that
+  if (showPieChart) {
+    return (
+      <PortfolioPieChart
+        selectedStocks={finalStocks}
+        onBack={() => setShowPieChart(false)}
+      />
+    );
+  }
+
+  // If showing stock selection, render that
+  if (showStockSelection) {
+    return (
+      <StockSelection
+        industries={selectedIndustries}
+        onConfirm={(stocks) => {
+          setFinalStocks(stocks);
+          setShowStockSelection(false);
+          setShowPieChart(true);
+        }}
+      />
+    );
+  }
 
   // If showing industry selection, render that
   if (showIndustrySelection) {
     return (
       <IndustrySelection onConfirm={(industries) => {
-        // setSelectedIndustries(industries); // Not needed for now
-        // TODO: proceed to next step with selected industries
-        // For now, just log them and stay on this screen
-        console.log('Selected industries:', industries);
+        setSelectedIndustries(industries);
+        setShowIndustrySelection(false);
+        setShowStockSelection(true);
       }} />
     );
   }

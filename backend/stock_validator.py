@@ -12,7 +12,7 @@ class StockValidator:
             'min_data_points': 100             # Need sufficient historical data
         }
     
-    def validate_stocks(self, stocks, max_stocks=8):
+    def validate_stocks(self, stocks, max_stocks=20):
         """Validate and filter stocks based on quality metrics"""
         print(f"\n🔍 STOCK VALIDATION: Analyzing {len(stocks)} Gemini recommendations...")
         print("-" * 60)
