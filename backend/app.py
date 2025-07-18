@@ -14,8 +14,6 @@ import json
 
 load_dotenv()
 
-from auth import auth_bp
-
 app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portfolio.db'
@@ -30,9 +28,10 @@ app.register_blueprint(auth_bp, url_prefix="/auth")
 
 # Configure CORS for frontend integration
 CORS(app, origins=[
-    "http://localhost:5173",  # React dev server,  # Alternative React port
-    "http://127.0.0.1:5173",
-], supports_credentials=True)
+    "http://localhost:5173",  # React dev server
+    "http://127.0.0.1:5173",  # Alternative React port
+    "https://didactic-space-robot-jjrjxxp79rqrhpv7g-5173.app.github.dev",  # Codespaces frontend
+], supports_credentials=True, allow_headers=['Content-Type'], methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # Initialize services
 gemini_service = GeminiService(os.getenv('GEMINI_API_KEY'))
@@ -46,15 +45,14 @@ def health_check():
 @app.route('/api/session/check', methods=['GET'])
 def check_session():
     user_id = session.get('user_id')
-    print(f"[DEBUG] Session check - user_id: {user_id}")
-    print(f"[DEBUG] Session check - session keys: {list(session.keys())}")
     if user_id:
-        user = db.session.get(User, user_id)
-        print(f"[DEBUG] Session check - user found: {user.username if user else 'None'}")
-        return jsonify({"logged_in": True, "user_id": user_id, "username": user.username if user else None})
+        user = User.query.get(user_id)
+        if user:
+            return jsonify({"authenticated": True, "user_id": user_id, "username": user.username}), 200
+        else:
+            return jsonify({"authenticated": False, "error": "User not found"}), 401
     else:
-        print(f"[DEBUG] Session check - no user_id found")
-        return jsonify({"logged_in": False}), 401
+        return jsonify({"authenticated": False, "error": "No active session"}), 401
 
 @app.route('/api/industries', methods=['GET'])
 def get_industries():
@@ -154,7 +152,7 @@ def recommend_stocks():
         try:
             # Get validated stock recommendations from Gemini
             recommendations = gemini_service.get_validated_stock_recommendations(selected_industries)
-            print(f"   ✅ Validation completed: {len(recommendations) if recommendations else 0} stocks")
+            print(f"Validation completed: {len(recommendations) if recommendations else 0} stocks")
             if not recommendations:
                 return jsonify({"error": "No stocks passed quality validation"}), 400
             # Return validated stocks with current prices
@@ -198,15 +196,15 @@ def recommend_stocks():
                 if 'quality_score' in stock:
                     clean_stock['quality_score'] = float(stock['quality_score'])
                 json_safe_stocks.append(clean_stock)
-            print(f"   📤 Returning {len(json_safe_stocks)} validated stocks")
+            print(f"Returning {len(json_safe_stocks)} validated stocks")
             return jsonify({"stocks": json_safe_stocks})
         except Exception as validation_error:
-            print(f"❌ Validation error: {validation_error}")
+            print(f"Validation error: {validation_error}")
             import traceback
             traceback.print_exc()
             return jsonify({"error": f"Stock validation failed: {str(validation_error)}"}), 500
     except Exception as e:
-        print(f"❌ General error: {e}")
+        print(f"General error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
@@ -223,10 +221,10 @@ def optimize_portfolio():
         investment_amount = data.get('investment_amount', 10000)
         data_period = data.get('data_period', '2y')  # Default to 2 years
         
-        print(f"🚀 Starting portfolio optimization request...")
-        print(f"   Investment amount: ${investment_amount:,.2f}")
-        print(f"   Selected stocks: {len(selected_stocks)}")
-        print(f"   Data period: {data_period}")
+        print(f"Starting portfolio optimization request...")
+        print(f"Investment amount: ${investment_amount:,.2f}")
+        print(f"Selected stocks: {len(selected_stocks)}")
+        print(f"Data period: {data_period}")
         
         if not selected_stocks:
             return jsonify({"error": "Please select at least 2 stocks"}), 400
@@ -236,19 +234,19 @@ def optimize_portfolio():
         
         # Get historical data for optimization
         symbols = [stock['symbol'] for stock in selected_stocks]
-        print(f"   Symbols: {symbols}")
+        print(f"Symbols: {symbols}")
         
         data_start_time = time.time()
         historical_data = stock_data_service.get_historical_data(symbols, period=data_period)
         data_fetch_time = time.time() - data_start_time
-        print(f"   📊 Data fetch completed in {data_fetch_time:.2f} seconds")
+        print(f"Data fetch completed in {data_fetch_time:.2f} seconds")
         
         if historical_data.empty:
-            print("   ❌ Historical data is empty")
+            print("Historical data is empty")
             return jsonify({"error": "Unable to fetch historical data for optimization. Please try again or select different stocks."}), 500
         
-        print(f"   ✅ Historical data shape: {historical_data.shape}")
-        print(f"   ✅ Data columns: {historical_data.columns.tolist()}")
+        print(f"Historical data shape: {historical_data.shape}")
+        print(f"Data columns: {historical_data.columns.tolist()}")
         
         # Check if we have enough data points
         if len(historical_data) < 20:
@@ -258,7 +256,7 @@ def optimize_portfolio():
         optimization_start_time = time.time()
         optimal_weights = portfolio_optimizer.optimize_portfolio(historical_data)
         optimization_time = time.time() - optimization_start_time
-        print(f"   🎯 Portfolio optimization completed in {optimization_time:.2f} seconds")
+        print(f"Portfolio optimization completed in {optimization_time:.2f} seconds")
         
         if optimal_weights is None or len(optimal_weights) == 0:
             return jsonify({"error": "Portfolio optimization failed. Please try different stocks."}), 500
@@ -269,7 +267,7 @@ def optimize_portfolio():
             symbols, optimal_weights, historical_data
         )
         explanation_time = time.time() - explanation_start_time
-        print(f"   📝 Explanation generated in {explanation_time:.2f} seconds")
+        print(f"Explanation generated in {explanation_time:.2f} seconds")
         
         # Calculate investment allocation
         allocations = []
@@ -285,10 +283,10 @@ def optimize_portfolio():
         metrics_start_time = time.time()
         risk_metrics = portfolio_optimizer.calculate_risk_metrics(historical_data, optimal_weights)
         metrics_time = time.time() - metrics_start_time
-        print(f"   📈 Risk metrics calculated in {metrics_time:.2f} seconds")
+        print(f"Risk metrics calculated in {metrics_time:.2f} seconds")
         
         total_time = time.time() - total_start_time
-        print(f"🎉 Total optimization request completed in {total_time:.2f} seconds")
+        print(f"Total optimization request completed in {total_time:.2f} seconds")
         
         return jsonify({
             "allocations": allocations,
@@ -314,108 +312,123 @@ def optimize_portfolio():
 @app.route('/api/portfolio/save', methods=['POST'])
 def save_portfolio():
     user_id = session.get('user_id')
-    print(f"[DEBUG] save_portfolio: user_id={user_id}")
-    if user_id:
-        user = db.session.get(User, user_id)
-        print(f"[DEBUG] save_portfolio: username={user.username if user else 'N/A'}")
     if not user_id:
-        return jsonify({"error": "User not logged in"}), 401
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 401
 
-    data = request.get_json()
-    stocks = data.get('stocks', [])
-    projected_return = data.get('projected_return', 0.0)
-    name = data.get('name', f"My Portfolio {len(stocks)} stocks")
+    try:
+        data = request.get_json()
+        portfolio_name = data.get('name', 'My Portfolio')
+        allocations = data.get('allocations', [])
+        projected_return = data.get('projected_return', 0)
 
-    if not stocks:
-        return jsonify({"error": "No stocks provided"}), 400
+        if not allocations:
+            return jsonify({"error": "No allocations provided"}), 400
 
-    portfolio = Portfolio(user_id=user_id, name=name, projected_return=projected_return)
-    db.session.add(portfolio)
-    db.session.flush()
+        # Create new portfolio
+        new_portfolio = Portfolio(
+            user_id=user_id,
+            name=portfolio_name,
+            projected_return=projected_return
+        )
+        db.session.add(new_portfolio)
+        db.session.flush()  # Get the portfolio ID
 
-    for stock in stocks:
-        symbol = stock.get('symbol')
-        weight = stock.get('weight')
+        # Add portfolio stocks
+        for allocation in allocations:
+            symbol = allocation.get('symbol')
+            weight = allocation.get('weight', 0)
+            name = allocation.get('name', symbol)
 
-        # Convert to folat
-        def parse_number(value):
-            try:
-                if isinstance(value, str):
-                    value = value.replace('$', '').replace(',', '').strip()
-                    if value.endswith('B'):
-                        return float(value[:-1]) * 1e9
-                    elif value.endswith('M'):
-                        return float(value[:-1]) * 1e6
-                    else:
-                        return float(value)
-                return float(value)
-            except:
-                return None
+            # Get or create validated stock entry
+            validated_stock = ValidatedStock.query.filter_by(symbol=symbol).first()
+            if not validated_stock:
+                # Create new validated stock entry
+                stock_info = stock_data_service.get_stock_info(symbol)
+                validated_stock = ValidatedStock(
+                    symbol=symbol,
+                    name=name,
+                    industry=stock_info.get('sector', 'Unknown') if stock_info else 'Unknown',
+                    current_price=stock_info.get('current_price', 0) if stock_info else 0,
+                    market_cap=stock_info.get('market_cap', 0) if stock_info else 0,
+                    quality_score=allocation.get('quality_score', 0)
+                )
+                db.session.add(validated_stock)
 
-        current_price = parse_number(stock.get('current_price'))
-        market_cap = parse_number(stock.get('market_cap'))
+            # Add portfolio stock
+            portfolio_stock = PortfolioStock(
+                portfolio_id=new_portfolio.id,
+                stock_symbol=symbol,
+                weight=weight
+            )
+            db.session.add(portfolio_stock)
 
-        # "memo"
-        if not ValidatedStock.query.filter_by(symbol=symbol).first():
-            db.session.add(ValidatedStock(
-                symbol=symbol,
-                name=stock.get('name'),
-                description=stock.get('description'),
-                industry=stock.get('industry'),
-                current_price=current_price,
-                market_cap=market_cap,
-                quality_score=stock.get('quality_score') or 0,
-                validation_metrics=json.dumps(stock.get('validation_metrics', {})),
-                validation_checks=json.dumps(stock.get('validation_checks', {}))
-            ))
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Portfolio saved successfully",
+            "portfolio_id": new_portfolio.id,
+            "portfolio_name": portfolio_name
+        }), 201
 
-        db.session.add(PortfolioStock(
-            portfolio_id=portfolio.id,
-            stock_symbol=symbol,
-            weight=weight
-        ))
-
-    db.session.commit()
-    return jsonify({"message": "Portfolio saved", "portfolio_id": portfolio.id})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error saving portfolio: {e}")
+        return jsonify({"error": f"Failed to save portfolio: {str(e)}"}), 500
 
 @app.route('/api/portfolio/list', methods=['GET'])
 def list_user_portfolios():
     user_id = session.get('user_id')
-    print(f"[DEBUG] list_user_portfolios: user_id={user_id}")
-    print(f"[DEBUG] list_user_portfolios: session keys: {list(session.keys())}")
-    if user_id:
-        user = db.session.get(User, user_id)
-        print(f"[DEBUG] list_user_portfolios: username={user.username if user else 'N/A'}")
     if not user_id:
-        print(f"[DEBUG] list_user_portfolios: No user_id found, returning 401")
-        return jsonify({"error": "User not logged in"}), 401
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 401
 
-    portfolios = Portfolio.query.filter_by(user_id=user_id).all()
-    result = []
+    try:
+        portfolios = Portfolio.query.filter_by(user_id=user_id).all()
+        
+        portfolio_list = []
+        for portfolio in portfolios:
+            # Get portfolio stocks with their details
+            portfolio_stocks = []
+            for ps in portfolio.stocks:
+                validated_stock = ValidatedStock.query.filter_by(symbol=ps.stock_symbol).first()
+                if validated_stock:
+                    portfolio_stocks.append({
+                        "symbol": ps.stock_symbol,
+                        "name": validated_stock.name,
+                        "industry": validated_stock.industry,
+                        "weight": ps.weight,
+                        "quality_score": validated_stock.quality_score
+                    })
+                else:
+                    # Fallback if validated stock not found
+                    portfolio_stocks.append({
+                        "symbol": ps.stock_symbol,
+                        "name": ps.stock_symbol,
+                        "industry": "Unknown",
+                        "weight": ps.weight,
+                        "quality_score": 0
+                    })
 
-    for p in portfolios:
-        stocks = PortfolioStock.query.filter_by(portfolio_id=p.id).all()
-        stock_data = []
-
-        for s in stocks:
-            stock = ValidatedStock.query.filter_by(symbol=s.stock_symbol).first()
-            stock_data.append({
-                "symbol": s.stock_symbol,
-                "weight": s.weight,
-                "name": stock.name,
-                "industry": stock.industry,
-                "quality_score": stock.quality_score
+            portfolio_list.append({
+                "id": portfolio.id,
+                "name": portfolio.name,
+                "created_at": portfolio.created_at.isoformat(),
+                "projected_return": portfolio.projected_return,
+                "stocks": portfolio_stocks
             })
 
-        result.append({
-            "id": p.id,
-            "name": p.name,
-            "created_at": p.created_at,
-            "projected_return": p.projected_return,
-            "stocks": stock_data
-        })
+        return jsonify({"portfolios": portfolio_list})
 
-    return jsonify({"portfolios": result})
+    except Exception as e:
+        print(f"Error listing portfolios: {e}")
+        return jsonify({"error": f"Failed to list portfolios: {str(e)}"}), 500
 
 
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config';
 
 function StockSelection({ industries, onConfirm }) {
   const [stocks, setStocks] = useState([]);
@@ -10,7 +11,7 @@ function StockSelection({ industries, onConfirm }) {
   useEffect(() => {
     setLoading(true);
     setError('');
-    fetch('http://localhost:5000/api/stocks/recommend', {
+    fetch(`${API_BASE_URL}/api/stocks/recommend`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ industries }),

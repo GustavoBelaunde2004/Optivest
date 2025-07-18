@@ -5,6 +5,7 @@ import ExperienceSelection from './ExperienceSelection';
 import IndustrySelection from './IndustrySelection';
 import StockSelection from './StockSelection';
 import PortfolioPieChart from './PortfolioPieChart';
+import { API_BASE_URL } from './config';
 
 function App() {
 
@@ -30,7 +31,7 @@ function App() {
 
   // Used to check if backend is running
   const getHealthCheck = async () =>{
-    const response = await fetch("http://localhost:5000/api/health");
+    const response = await fetch(`${API_BASE_URL}/api/health`);
     const data = await response.json();
     setHealthData(data.status);
     console.log(data.status);
@@ -44,7 +45,7 @@ function App() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/session/check', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/api/session/check`, { credentials: 'include' });
         if (res.status === 200) {
           // User is logged in
           setIsLoggedIn(true);
@@ -62,7 +63,7 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch("http://localhost:5000/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,7 +95,7 @@ function App() {
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch("http://localhost:5000/auth/register", {
+      const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,7 +138,7 @@ function App() {
     try {
       // First check if user is still logged in
       console.log('🔍 Checking session...');
-      const sessionRes = await fetch('http://localhost:5000/api/session/check', { credentials: 'include' });
+      const sessionRes = await fetch(`${API_BASE_URL}/api/session/check`, { credentials: 'include' });
       console.log('🔍 Session check status:', sessionRes.status);
       const sessionData = await sessionRes.json();
       console.log('🔍 Session data:', sessionData);
@@ -152,7 +153,7 @@ function App() {
       }
       
       console.log('✅ Session valid, fetching portfolios...');
-      const res = await fetch('http://localhost:5000/api/portfolio/list', { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/api/portfolio/list`, { credentials: 'include' });
       console.log('🔍 Portfolio list status:', res.status);
       const data = await res.json();
       console.log('🔍 Portfolio data:', data);
@@ -180,7 +181,7 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:5000/auth/logout', {
+      await fetch(`${API_BASE_URL}/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       });

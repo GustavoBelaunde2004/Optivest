@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config';
 
 function IndustrySelection({ onConfirm }) {
   const [industries, setIndustries] = useState([]); //state for industries
@@ -9,7 +10,7 @@ function IndustrySelection({ onConfirm }) {
 
   //fetch industries from backend
   useEffect(() => {
-    fetch('http://localhost:5000/api/industries')
+    fetch(`${API_BASE_URL}/api/industries`)
       .then(res => res.json())
       .then(data => {
         setIndustries(data.industries || []);

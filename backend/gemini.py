@@ -123,7 +123,7 @@ Only include real, currently traded stocks with valid ticker symbols.
         raw_recommendations = self.get_stock_recommendations(industries)
         
         if not raw_recommendations:
-            print("⚠️  No recommendations received from Gemini")
+            print("No recommendations received from Gemini")
             return []
         
         print(f"   Generated {len(raw_recommendations)} initial recommendations")

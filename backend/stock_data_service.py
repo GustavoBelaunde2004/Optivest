@@ -35,42 +35,8 @@ class StockDataService:
             from datetime import datetime, timedelta
             start_time = time.time()
             
-            print(f"📊 Fetching historical data for: {symbols}")
-            print(f"   📅 Data period requested: {period}")
-            
-            # Show what period means in human terms
-            period_info = {
-                "1d": "1 day",
-                "5d": "5 days", 
-                "1mo": "1 month",
-                "3mo": "3 months",
-                "6mo": "6 months", 
-                "1y": "1 year (~252 trading days)",
-                "2y": "2 years (~504 trading days) ⭐ DEFAULT",
-                "5y": "5 years (~1260 trading days)",
-                "10y": "10 years (~2520 trading days)",
-                "ytd": "Year to date",
-                "max": "Maximum available history"
-            }
-            
-            period_description = period_info.get(period, f"Custom period: {period}")
-            print(f"   📆 This means: {period_description}")
-            
-            # Calculate expected date range for reference
-            end_date = datetime.now()
-            if period == "1y":
-                start_date = end_date - timedelta(days=365)
-            elif period == "6mo":
-                start_date = end_date - timedelta(days=180)
-            elif period == "3mo":
-                start_date = end_date - timedelta(days=90)
-            elif period == "2y":
-                start_date = end_date - timedelta(days=730)
-            else:
-                start_date = "varies"
-            
-            if start_date != "varies":
-                print(f"   📅 Expected date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+            print(f"Fetching historical data for: {symbols}")
+            print(f"Data period requested: {period}")
             
             # Try real data first with longer timeout and multiple attempts
             real_data_attempts = 0
@@ -79,7 +45,6 @@ class StockDataService:
             while real_data_attempts < max_attempts:
                 try:
                     real_data_attempts += 1
-                    print(f"   Attempt {real_data_attempts}/{max_attempts} to fetch real data...")
                     
                     # Download data for all symbols with increased timeout
                     data = yf.download(
@@ -87,12 +52,10 @@ class StockDataService:
                         period=period, 
                         progress=False, 
                         show_errors=False,
-                        timeout=30  # Increased timeout
+                        timeout=30
                     )
                     
                     if not data.empty and 'Adj Close' in data.columns:
-                        print(f"   ✅ Downloaded real data shape: {data.shape}")
-                        
                         if len(symbols) == 1:
                             adj_close_data = data['Adj Close']
                             if isinstance(adj_close_data, pd.Series):
@@ -105,52 +68,29 @@ class StockDataService:
                         result = result.dropna()
                         if not result.empty and len(result) >= 20:
                             fetch_time = time.time() - start_time
-                            
-                            # Show detailed data information
-                            start_date_actual = result.index[0].strftime('%Y-%m-%d')
-                            end_date_actual = result.index[-1].strftime('%Y-%m-%d')
-                            total_days = (result.index[-1] - result.index[0]).days
-                            
-                            print(f"   ✅ Real data fetched in {fetch_time:.2f} seconds")
-                            print(f"   📊 Data points: {len(result)} trading days")
-                            print(f"   📅 Actual date range: {start_date_actual} to {end_date_actual}")
-                            print(f"   📆 Total calendar days: {total_days} days")
-                            print(f"   📈 Columns (stocks): {list(result.columns)}")
-                            
+                            print(f"Real data fetched in {fetch_time:.2f} seconds")
                             return result
-                        else:
-                            print(f"   ⚠️  Real data insufficient: {len(result) if not result.empty else 0} data points")
                     
                 except Exception as e:
-                    print(f"   ❌ Real data fetch attempt {real_data_attempts} failed: {e}")
+                    print(f"Real data fetch attempt {real_data_attempts} failed: {e}")
                     if real_data_attempts < max_attempts:
-                        print(f"   ⏳ Waiting 2 seconds before retry...")
                         time.sleep(2)
             
             # Fallback to mock data
-            print("   📈 Using mock data for demonstration (real data unavailable)")
+            print("Using mock data for demonstration (real data unavailable)")
             mock_start = time.time()
             result = self._generate_mock_data(symbols, period)
             mock_time = time.time() - mock_start
             
-            # Show mock data details
             if not result.empty:
-                start_date_mock = result.index[0].strftime('%Y-%m-%d')
-                end_date_mock = result.index[-1].strftime('%Y-%m-%d')
-                total_days_mock = (result.index[-1] - result.index[0]).days
-                
-                print(f"   ✅ Mock data generated in {mock_time:.2f} seconds")
-                print(f"   📊 Data points: {len(result)} trading days")
-                print(f"   📅 Mock date range: {start_date_mock} to {end_date_mock}")
-                print(f"   📆 Total calendar days: {total_days_mock} days")
-                print(f"   📈 Columns (stocks): {list(result.columns)}")
+                print(f"Mock data generated in {mock_time:.2f} seconds")
             
             total_time = time.time() - start_time
-            print(f"📊 Total data fetch time: {total_time:.2f} seconds")
+            print(f"Total data fetch time: {total_time:.2f} seconds")
             return result
             
         except Exception as e:
-            print(f"❌ Error in get_historical_data: {e}")
+            print(f"Error in get_historical_data: {e}")
             return self._generate_mock_data(symbols, period)
     
     def _generate_mock_data(self, symbols, period='1y'):

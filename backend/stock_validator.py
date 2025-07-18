@@ -14,7 +14,7 @@ class StockValidator:
     
     def validate_stocks(self, stocks, max_stocks=20):
         """Validate and filter stocks based on quality metrics"""
-        print(f"\n🔍 STOCK VALIDATION: Analyzing {len(stocks)} Gemini recommendations...")
+        print(f"\nSTOCK VALIDATION: Analyzing {len(stocks)} Gemini recommendations...")
         print("-" * 60)
         
         validated_stocks = []
@@ -29,9 +29,9 @@ class StockValidator:
                 # Add validation metrics to stock data
                 enhanced_stock = {**stock, **validation_result}
                 validated_stocks.append(enhanced_stock)
-                print(f"       ✅ PASSED - Quality Score: {validation_result['quality_score']:.2f}")
+                print(f"       PASSED - Quality Score: {validation_result['quality_score']:.2f}")
             else:
-                print(f"       ❌ FAILED - {validation_result['failure_reason']}")
+                print(f"       FAILED - {validation_result['failure_reason']}")
         
         # Sort by quality score (highest first)
         validated_stocks.sort(key=lambda x: x['quality_score'], reverse=True)
@@ -39,15 +39,15 @@ class StockValidator:
         # Limit to max_stocks best candidates
         if len(validated_stocks) > max_stocks:
             validated_stocks = validated_stocks[:max_stocks]
-            print(f"\n📊 Selected top {max_stocks} highest quality stocks")
+            print(f"\nSelected top {max_stocks} highest quality stocks")
         
-        print(f"\n✅ VALIDATION COMPLETE:")
+        print(f"\nVALIDATION COMPLETE:")
         print(f"   Original recommendations: {len(stocks)}")
         print(f"   Passed validation: {len(validated_stocks)}")
         print(f"   Quality threshold: High-grade stocks only")
         
         if len(validated_stocks) < 2:
-            print(f"\n⚠️  WARNING: Only {len(validated_stocks)} stocks passed validation!")
+            print(f"\nWARNING: Only {len(validated_stocks)} stocks passed validation!")
             print(f"   Consider lowering quality thresholds or selecting different industries.")
             return []
         
@@ -195,7 +195,7 @@ class StockValidator:
     
     def display_validation_summary(self, stocks):
         """Display a summary of validated stocks"""
-        print(f"\n📊 VALIDATED STOCK PORTFOLIO:")
+        print(f"\nVALIDATED STOCK PORTFOLIO:")
         print("=" * 70)
         print(f"{'#':<3} {'Symbol':<7} {'Score':<6} {'Market Cap':<12} {'Sharpe':<7} {'Vol%':<6}")
         print("-" * 70)
@@ -221,5 +221,5 @@ class StockValidator:
             print(f"{i:<3} {symbol:<7} {score:<6.1f} {cap_str:<12} {sharpe:<7.2f} {volatility*100:<5.1f}%")
         
         print("-" * 70)
-        print(f"💡 All stocks meet institutional-grade quality standards")
-        print(f"🎯 This should result in more balanced portfolio allocations")
+        print(f"All stocks meet institutional-grade quality standards")
+        print(f"This should result in more balanced portfolio allocations")

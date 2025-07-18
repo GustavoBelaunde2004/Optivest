@@ -40,7 +40,10 @@ const renderCustomizedLabel = ({ name, weight, cx, cy, midAngle, innerRadius, ou
   );
 };
 
-function PortfolioPieChart({ selectedStocks, onLogout, onNewPortfolio, onViewPortfolios }) {
+import { useState, useEffect } from 'react';
+import { API_BASE_URL } from './config';
+
+function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, onViewPortfolios }) {
   const [allocations, setAllocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -53,7 +56,7 @@ function PortfolioPieChart({ selectedStocks, onLogout, onNewPortfolio, onViewPor
     setError('');
     setSaveStatus('');
     hasSaved.current = false;
-    fetch('http://localhost:5000/api/portfolio/optimize', {
+    fetch(`${API_BASE_URL}/api/portfolio/optimize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stocks: selectedStocks, investment_amount: 10000 }),
@@ -79,7 +82,7 @@ function PortfolioPieChart({ selectedStocks, onLogout, onNewPortfolio, onViewPor
     if (!loading && allocations.length > 0 && !hasSaved.current) {
       hasSaved.current = true;
       const projected_return = riskMetrics && riskMetrics.annual_return ? riskMetrics.annual_return : 0;
-      fetch('http://localhost:5000/api/portfolio/save', {
+      fetch(`${API_BASE_URL}/api/portfolio/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

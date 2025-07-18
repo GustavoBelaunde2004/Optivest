@@ -19,16 +19,16 @@ class PortfolioOptimizer:
         import time
         start_time = time.time()
         
-        print(f"🔄 Starting portfolio optimization...")
-        print(f"   Data shape: {price_data.shape}")
-        print(f"   Method: {method}")
+        print(f"Starting portfolio optimization...")
+        print(f"Data shape: {price_data.shape}")
+        print(f"Method: {method}")
         
         # Calculate returns
         returns = price_data.pct_change().dropna()
         
         n_assets = len(returns.columns)
-        print(f"   Number of assets: {n_assets}")
-        print(f"   Data points: {len(returns)}")
+        print(f"Number of assets: {n_assets}")
+        print(f"Data points: {len(returns)}")
         
         # Mean returns (annualized)
         mu = returns.mean() * 252
@@ -36,7 +36,7 @@ class PortfolioOptimizer:
         # Covariance matrix (annualized)
         cov_matrix = returns.cov() * 252
         
-        print(f"   Computing optimization...")
+        print(f"Computing optimization...")
         
         if method == "max_sharpe":
             result = self._maximize_sharpe_ratio(mu, cov_matrix, n_assets)
@@ -48,17 +48,15 @@ class PortfolioOptimizer:
         
         end_time = time.time()
         optimization_time = end_time - start_time
-        print(f"✅ Optimization completed in {optimization_time:.2f} seconds")
+        print(f"Optimization completed in {optimization_time:.2f} seconds")
         
         return result
     
     def _maximize_sharpe_ratio(self, mu, cov_matrix, n_assets, risk_free_rate=0.02):
         """Maximize Sharpe ratio using convex optimization"""
         try:
-            print(f"   🔢 Setting up optimization problem...")
-            print(f"      - Assets: {n_assets}")
-            print(f"      - Expected returns: {[f'{x:.2%}' for x in mu.values]}")
-            print(f"      - Asset symbols: {mu.index.tolist()}")
+            print(f"Setting up optimization problem...")
+            print(f"Assets: {n_assets}")
             
             # Define optimization variables
             weights = cp.Variable(n_assets)
@@ -67,7 +65,7 @@ class PortfolioOptimizer:
             portfolio_return = cp.sum(cp.multiply(mu.values, weights))
             portfolio_risk = cp.quad_form(weights, cov_matrix.values)
             
-            print(f"   🎯 Trying unconstrained optimization first...")
+            print(f"Trying unconstrained optimization first...")
             
             # Try unconstrained optimization first (only sum to 1 and non-negative)
             basic_constraints = [
@@ -91,21 +89,19 @@ class PortfolioOptimizer:
                     unconstrained_weights = np.maximum(unconstrained_weights, 0)
                     unconstrained_weights = unconstrained_weights / np.sum(unconstrained_weights)
                     
-                    print(f"   📊 Unconstrained allocation: {[f'{w:.1%}' for w in unconstrained_weights]}")
-                    
                     # Check if any weight is too small (< 0.5%)
                     small_weights = unconstrained_weights < 0.005
                     num_small = np.sum(small_weights)
                     
                     if num_small == 0:
-                        print(f"   ✅ All weights significant, using unconstrained solution")
+                        print(f"All weights significant, using unconstrained solution")
                         return unconstrained_weights
                     else:
-                        print(f"   ⚠️  {num_small} assets have tiny allocations (< 0.5%)")
-                        print(f"   🔄 Applying minimum 1% constraint for practical trading...")
+                        print(f"{num_small} assets have tiny allocations (< 0.5%)")
+                        print(f"Applying minimum 1% constraint for practical trading...")
             
             # Apply minimum allocation constraint if needed
-            print(f"   🔒 Applying constraints: min 1%, max 50% per asset")
+            print(f"Applying constraints: min 1%, max 50% per asset")
             
             constrained_constraints = [
                 cp.sum(weights) == 1,  # Weights sum to 1
@@ -117,7 +113,7 @@ class PortfolioOptimizer:
             constrained_problem = cp.Problem(objective, constrained_constraints)
             constrained_result = constrained_problem.solve(verbose=False)
             
-            print(f"   📊 Constrained optimization status: {constrained_problem.status}")
+            print(f"Constrained optimization status: {constrained_problem.status}")
             
             if constrained_problem.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
                 optimal_weights = weights.value
@@ -127,23 +123,13 @@ class PortfolioOptimizer:
                     optimal_weights = np.maximum(optimal_weights, 0)
                     optimal_weights = optimal_weights / np.sum(optimal_weights)
                     
-                    print(f"   📊 Final allocation: {[f'{w:.1%}' for w in optimal_weights]}")
-                    
-                    # Explain why we got 1% allocations
-                    min_weight_count = np.sum(optimal_weights <= 0.011)  # Close to 1%
-                    if min_weight_count > 0:
-                        print(f"   💡 {min_weight_count} assets at ~1% because:")
-                        print(f"      - Lower expected returns or higher risk")
-                        print(f"      - Minimum 1% constraint prevents zero allocation")
-                        print(f"      - Optimizer wants diversification benefits")
-                    
                     return optimal_weights
             
-            print("   ⚠️  Both optimizations failed, using equal weights")
+            print("Both optimizations failed, using equal weights")
             return np.array([1/n_assets] * n_assets)
                 
         except Exception as e:
-            print(f"   ❌ Error in optimization: {e}")
+            print(f"Error in optimization: {e}")
             import traceback
             traceback.print_exc()
             return np.array([1/n_assets] * n_assets)
@@ -206,10 +192,7 @@ class PortfolioOptimizer:
     
     def generate_explanation(self, symbols, weights, price_data):
         """Generate beginner-friendly explanation of the optimization"""
-        try:
-            print(f"Generating explanation for symbols: {symbols}")
-            print(f"Weights: {[f'{w:.1%}' for w in weights]}")
-            
+        try:            
             returns = price_data.pct_change().dropna()
             
             # Ensure symbols is a list and weights is a numpy array
@@ -218,43 +201,24 @@ class PortfolioOptimizer:
             weights = np.array(weights)
             
             if len(symbols) != len(weights):
-                print(f"Length mismatch: symbols={len(symbols)}, weights={len(weights)}")
                 return "Portfolio optimization completed successfully."
             
-            # Calculate individual stock metrics
-            annual_returns = returns.mean() * 252
-            annual_volatilities = returns.std() * np.sqrt(252)
-            
-            # Find highest and lowest weighted stocks
+            # Find highest weighted stock
             max_weight_idx = np.argmax(weights)
-            min_weight_idx = np.argmin(weights)
-            
             max_stock = symbols[max_weight_idx]
-            min_stock = symbols[min_weight_idx]
             
             # Count stocks with minimum allocations (~1%)
             min_allocation_stocks = [(symbols[i], weights[i]) for i in range(len(symbols)) if weights[i] <= 0.015]
-            significant_allocation_stocks = [(symbols[i], weights[i]) for i in range(len(symbols)) if weights[i] > 0.015]
-            
-            print(f"Max weight stock: {max_stock} ({weights[max_weight_idx]:.1%})")
-            print(f"Min weight stock: {min_stock} ({weights[min_weight_idx]:.1%})")
-            print(f"Stocks with ~1% allocation: {len(min_allocation_stocks)}")
             
             # Simple, concise explanation
             explanation_parts = []
             explanation_parts.append("Portfolio optimized using Modern Portfolio Theory for best risk-return balance.")
-            
-            # Show top allocation
             explanation_parts.append(f"Highest allocation: {max_stock} ({weights[max_weight_idx]:.1%}) - best risk-adjusted returns.")
             
-            # Brief note on minimal allocations if any
             if len(min_allocation_stocks) > 0:
                 explanation_parts.append(f"{len(min_allocation_stocks)} stocks received 1% minimum allocation for diversification.")
             
             return "\n".join(explanation_parts)
             
         except Exception as e:
-            print(f"Error generating explanation: {e}")
-            import traceback
-            traceback.print_exc()
             return "Portfolio optimization completed successfully."
