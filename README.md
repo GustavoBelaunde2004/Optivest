@@ -2,7 +2,7 @@
 
 An intelligent portfolio optimization application that helps users build diversified investment portfolios based on their experience level, preferred industries, and risk tolerance. The app uses AI-powered stock recommendations and modern portfolio theory to create optimized asset allocations.
 
-## 🚀 Features
+## Features
 
 - **User Authentication**: Secure login and registration system with session management
 - **Experience-Based Recommendations**: Tailored portfolio suggestions based on investment experience
@@ -13,7 +13,7 @@ An intelligent portfolio optimization application that helps users build diversi
 - **Portfolio Management**: Save, view, and manage multiple portfolios
 - **Real-time Stock Data**: Integration with Yahoo Finance for up-to-date market information
 
-## 🏗️ Architecture
+## Architecture
 
 ### Frontend
 - **React 19** with Vite for modern, fast development
@@ -30,7 +30,7 @@ An intelligent portfolio optimization application that helps users build diversi
 - **NumPy & Pandas** for numerical computations
 - **Flask-CORS** for cross-origin resource sharing
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 - Node.js (v16 or higher)
@@ -120,7 +120,7 @@ The frontend will be available at `http://localhost:5173`
 
 For detailed API documentation, see `backend/API_DOCUMENTATION.md`
 
-## 🎯 Portfolio Optimization
+## Portfolio Optimization
 
 The application uses Modern Portfolio Theory to optimize portfolios by:
 - Minimizing risk for a given level of expected return
