@@ -43,6 +43,19 @@ stock_data_service = StockDataService()
 def health_check():
     return jsonify({"status": "healthy", "message": "Portfolio Optimizer API is running"})
 
+@app.route('/api/session/check', methods=['GET'])
+def check_session():
+    user_id = session.get('user_id')
+    print(f"[DEBUG] Session check - user_id: {user_id}")
+    print(f"[DEBUG] Session check - session keys: {list(session.keys())}")
+    if user_id:
+        user = db.session.get(User, user_id)
+        print(f"[DEBUG] Session check - user found: {user.username if user else 'None'}")
+        return jsonify({"logged_in": True, "user_id": user_id, "username": user.username if user else None})
+    else:
+        print(f"[DEBUG] Session check - no user_id found")
+        return jsonify({"logged_in": False}), 401
+
 @app.route('/api/industries', methods=['GET'])
 def get_industries():
     """Get list of available investment industries"""
@@ -369,10 +382,12 @@ def save_portfolio():
 def list_user_portfolios():
     user_id = session.get('user_id')
     print(f"[DEBUG] list_user_portfolios: user_id={user_id}")
+    print(f"[DEBUG] list_user_portfolios: session keys: {list(session.keys())}")
     if user_id:
         user = db.session.get(User, user_id)
         print(f"[DEBUG] list_user_portfolios: username={user.username if user else 'N/A'}")
     if not user_id:
+        print(f"[DEBUG] list_user_portfolios: No user_id found, returning 401")
         return jsonify({"error": "User not logged in"}), 401
 
     portfolios = Portfolio.query.filter_by(user_id=user_id).all()

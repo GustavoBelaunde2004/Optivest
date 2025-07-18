@@ -40,6 +40,23 @@ function App() {
     getHealthCheck()
   }, []);
 
+  // Check if user is still logged in on app load
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/session/check', { credentials: 'include' });
+        if (res.status === 200) {
+          // User is logged in
+          setIsLoggedIn(true);
+        }
+      } catch (err) {
+        console.log('Session check failed:', err);
+      }
+    };
+    
+    checkSession();
+  }, []);
+
   //Login function
   const handleLogin = async () => {
     setIsLoading(true);
@@ -58,6 +75,7 @@ function App() {
         const data = await response.json();
         setIsLoggedIn(true);
         console.log("Login successful", data); //logic success
+        setError(''); // Clear any previous errors
         
       } else {
         const errorData = await response.json();
@@ -115,16 +133,72 @@ function App() {
 
   const fetchPortfolios = async () => {
     setPortfolioError('');
+    console.log('🔍 Starting fetchPortfolios...');
     try {
+      // First check if user is still logged in
+      console.log('🔍 Checking session...');
+      const sessionRes = await fetch('http://localhost:5000/api/session/check', { credentials: 'include' });
+      console.log('🔍 Session check status:', sessionRes.status);
+      const sessionData = await sessionRes.json();
+      console.log('🔍 Session data:', sessionData);
+      
+      if (sessionRes.status !== 200) {
+        // User not logged in, redirect to login
+        console.log('❌ Session check failed, redirecting to login');
+        setIsLoggedIn(false);
+        setShowPortfolios(false);
+        setError('Session expired. Please login again.');
+        return;
+      }
+      
+      console.log('✅ Session valid, fetching portfolios...');
       const res = await fetch('http://localhost:5000/api/portfolio/list', { credentials: 'include' });
+      console.log('🔍 Portfolio list status:', res.status);
       const data = await res.json();
+      console.log('🔍 Portfolio data:', data);
+      
+      if (res.status === 401) {
+        // User not logged in, redirect to login
+        console.log('❌ Portfolio list returned 401, redirecting to login');
+        setIsLoggedIn(false);
+        setShowPortfolios(false);
+        setError('Session expired. Please login again.');
+        return;
+      }
       if (data.portfolios) {
+        console.log('✅ Portfolios fetched successfully:', data.portfolios.length);
         setPortfolios(data.portfolios);
       } else {
+        console.log('❌ No portfolios in response:', data);
         setPortfolioError(data.error || 'Failed to fetch portfolios.');
       }
-    } catch {
+    } catch (err) {
+      console.error('❌ Error fetching portfolios:', err);
       setPortfolioError('Failed to fetch portfolios.');
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:5000/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      // Reset all state to return to login
+      setIsLoggedIn(false);
+      setShowExperienceSelection(false);
+      setShowIndustrySelection(false);
+      setShowStockSelection(false);
+      setShowPieChart(false);
+      setShowPortfolios(false);
+      setSelectedIndustries([]);
+      setFinalStocks([]);
+      setPortfolios([]);
+      setSelectedPortfolio(null);
+      setUsername('');
+      setPassword('');
+    } catch (err) {
+      console.error('Logout failed:', err);
     }
   };
 
@@ -141,6 +215,25 @@ function App() {
           setSelectedIndustries([]);
           setFinalStocks([]);
           // Do not log out the user
+        }}
+        onLogout={handleLogout}
+        onNewPortfolio={() => {
+          setShowPieChart(false);
+          setShowExperienceSelection(false);
+          setShowIndustrySelection(true);
+          setSelectedIndustries([]);
+          setFinalStocks([]);
+        }}
+        onViewPortfolios={async () => {
+          setShowPieChart(false);
+          setShowExperienceSelection(false);
+          setShowIndustrySelection(false);
+          setShowStockSelection(false);
+          setSelectedIndustries([]);
+          setFinalStocks([]);
+          setShowPortfolios(true);
+          // Keep user logged in and fetch portfolios
+          await fetchPortfolios();
         }}
       />
     );
@@ -178,37 +271,49 @@ function App() {
     );
   }
 
-  // After login, show View Portfolios button
-  if (isLoggedIn && !showExperienceSelection && !showIndustrySelection && !showStockSelection && !showPieChart) {
+  // Show portfolios list
+  if (showPortfolios) {
     return (
       <section className="min-h-screen flex flex-col items-center justify-center font-mono bg-gradient-to-r from-cyan-500 via-indigo-500 to-sky-500">
-        <h1 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">Welcome!</h1>
-        <button
-          className="mb-8 px-8 py-4 rounded-lg bg-white text-blue-700 font-bold text-2xl shadow-lg hover:bg-blue-100 transition"
-          onClick={() => { setShowPortfolios(true); fetchPortfolios(); }}
-        >
-          View Portfolios
-        </button>
-        {showPortfolios && (
-          <div className="w-full max-w-5xl flex flex-row gap-6 overflow-x-auto pb-4">
-            {portfolios.length === 0 && !portfolioError && (
-              <div className="text-white text-xl">No portfolios found.</div>
-            )}
-            {portfolioError && <div className="text-red-500 bg-white p-2 rounded">{portfolioError}</div>}
-            {portfolios.map((p) => (
-              <div
-                key={p.id}
-                className="min-w-[260px] max-w-xs bg-white rounded-xl shadow-lg p-6 flex flex-col items-center cursor-pointer hover:scale-105 transition border-2 border-blue-200"
-                onClick={() => setSelectedPortfolio(p)}
-              >
-                <div className="font-bold text-blue-700 text-lg mb-2 truncate w-full text-center">{p.name}</div>
-                <div className="text-gray-500 text-sm mb-2">{new Date(p.created_at).toLocaleString()}</div>
-                <div className="text-blue-900 font-semibold">{p.stocks.length} stocks</div>
-                <div className="text-green-600 font-bold mt-2">Projected Return: {p.projected_return ? (p.projected_return * 100).toFixed(2) + '%' : 'N/A'}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <h1 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">Your Portfolios</h1>
+        <div className="flex gap-4 mb-8">
+          <button
+            className="px-8 py-4 rounded-lg bg-white text-blue-700 font-bold text-2xl shadow-lg hover:bg-blue-100 transition"
+            onClick={() => {
+              setShowPortfolios(false);
+              setShowExperienceSelection(false);
+              setShowIndustrySelection(true);
+              setSelectedIndustries([]);
+              setFinalStocks([]);
+            }}
+          >
+            New Portfolio
+          </button>
+          <button
+            className="px-8 py-4 rounded-lg bg-red-500 text-white font-bold text-2xl shadow-lg hover:bg-red-600 transition"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
+        <div className="w-full max-w-5xl flex flex-row gap-6 overflow-x-auto pb-4">
+          {portfolios.length === 0 && !portfolioError && (
+            <div className="text-white text-xl">No portfolios found.</div>
+          )}
+          {portfolioError && <div className="text-red-500 bg-white p-2 rounded">{portfolioError}</div>}
+          {portfolios.map((p) => (
+            <div
+              key={p.id}
+              className="min-w-[260px] max-w-xs bg-white rounded-xl shadow-lg p-6 flex flex-col items-center cursor-pointer hover:scale-105 transition border-2 border-blue-200"
+              onClick={() => setSelectedPortfolio(p)}
+            >
+              <div className="font-bold text-blue-700 text-lg mb-2 truncate w-full text-center">{p.name}</div>
+              <div className="text-gray-500 text-sm mb-2">{new Date(p.created_at).toLocaleString()}</div>
+              <div className="text-blue-900 font-semibold">{p.stocks.length} stocks</div>
+              <div className="text-green-600 font-bold mt-2">Projected Return: {p.projected_return ? (p.projected_return * 100).toFixed(2) + '%' : 'N/A'}</div>
+            </div>
+          ))}
+        </div>
         {/* Modal for portfolio details */}
         {selectedPortfolio && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" onClick={e => { if (e.target === modalRef.current) setSelectedPortfolio(null); }} ref={modalRef}>
@@ -242,6 +347,29 @@ function App() {
             </div>
           </div>
         )}
+      </section>
+    );
+  }
+
+  // After login, show View Portfolios button
+  if (isLoggedIn && !showExperienceSelection && !showIndustrySelection && !showStockSelection && !showPieChart && !showPortfolios) {
+    return (
+      <section className="min-h-screen flex flex-col items-center justify-center font-mono bg-gradient-to-r from-cyan-500 via-indigo-500 to-sky-500">
+        <h1 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">Welcome!</h1>
+        <div className="flex gap-4 mb-8">
+          <button
+            className="px-8 py-4 rounded-lg bg-white text-blue-700 font-bold text-2xl shadow-lg hover:bg-blue-100 transition"
+            onClick={async () => { setShowPortfolios(true); await fetchPortfolios(); }}
+          >
+            View Portfolios
+          </button>
+          <button
+            className="px-8 py-4 rounded-lg bg-red-500 text-white font-bold text-2xl shadow-lg hover:bg-red-600 transition"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
       </section>
     );
   }
