@@ -18,7 +18,7 @@ app = Flask(__name__)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///portfolio.db'
 db.init_app(app)
-app.secret_key = "key"
+app.secret_key = os.getenv('SECRET_KEY', 'fallback-key-for-development')
 
 # Initialize database tables
 with app.app_context():
