@@ -98,7 +98,7 @@ The frontend will be available at `http://localhost:5173`
 **Frontend**:
 - API base URL is configured in `src/config.js`
 
-## 🚦 Usage
+## Usage
 
 1. **Register/Login**: Create an account or log in to access the portfolio optimizer
 2. **Select Experience Level**: Choose your investment experience level)
@@ -108,7 +108,7 @@ The frontend will be available at `http://localhost:5173`
 6. **Save Portfolio**: Save your portfolio for future reference
 7. **View Results**: Analyze your portfolio with interactive charts
 
-## 📊 API Endpoints
+## API Endpoints
 
 - `GET /api/health` - Health check
 - `GET /api/industries` - Get available industries
