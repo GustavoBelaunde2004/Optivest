@@ -31,6 +31,7 @@ CORS(app, origins=[
     "http://localhost:5173",  # React dev server
     "http://127.0.0.1:5173",  # Alternative React port
     "https://didactic-space-robot-jjrjxxp79rqrhpv7g-5173.app.github.dev",  # Codespaces frontend
+    "https://your-vercel-app.vercel.app",  # Replace with your actual Vercel URL
 ], supports_credentials=True, allow_headers=['Content-Type'], methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # Initialize services

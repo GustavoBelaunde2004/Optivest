@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { API_BASE_URL } from './config';
 
 // Improved, more distinct blue/cyan/purple palette
 const COLORS = [
@@ -39,9 +40,6 @@ const renderCustomizedLabel = ({ name, weight, cx, cy, midAngle, innerRadius, ou
     </text>
   );
 };
-
-import { useState, useEffect } from 'react';
-import { API_BASE_URL } from './config';
 
 function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, onViewPortfolios }) {
   const [allocations, setAllocations] = useState([]);
