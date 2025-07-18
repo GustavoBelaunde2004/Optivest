@@ -41,7 +41,7 @@ const renderCustomizedLabel = ({ name, weight, cx, cy, midAngle, innerRadius, ou
   );
 };
 
-function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, onViewPortfolios }) {
+function PortfolioPieChart({ selectedStocks, onLogout, onNewPortfolio, onViewPortfolios }) {
   const [allocations, setAllocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -85,9 +85,10 @@ function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, o
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          stocks: allocations.map(a => ({
-            ...a,
-            ...selectedStocks.find(s => s.symbol === a.symbol)
+          allocations: allocations.map(a => ({
+            symbol: a.symbol,
+            weight: a.weight,
+            name: a.name || (selectedStocks.find(s => s.symbol === a.symbol)?.name) || a.symbol
           })),
           projected_return,
           name: undefined // Let backend auto-name
@@ -95,7 +96,7 @@ function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, o
       })
         .then(res => res.json())
         .then(data => {
-          if (data.message === 'Portfolio saved') {
+          if (data.message === 'Portfolio saved successfully') {
             setSaveStatus('Portfolio saved!');
           } else {
             setSaveStatus('Failed to save portfolio.');

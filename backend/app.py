@@ -420,7 +420,7 @@ def list_user_portfolios():
             portfolio_list.append({
                 "id": portfolio.id,
                 "name": portfolio.name,
-                "created_at": portfolio.created_at.isoformat(),
+                "created_at": portfolio.created_at.isoformat() + "Z" if portfolio.created_at else None,
                 "projected_return": portfolio.projected_return,
                 "stocks": portfolio_stocks
             })

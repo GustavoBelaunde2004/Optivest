@@ -6,10 +6,10 @@ import IndustrySelection from './IndustrySelection';
 import StockSelection from './StockSelection';
 import PortfolioPieChart from './PortfolioPieChart';
 import { API_BASE_URL } from './config';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function App() {
 
-  const [healthData, setHealthData] = useState(''); //keep this for backend health check
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,11 +29,36 @@ function App() {
   const [portfolioError, setPortfolioError] = useState('');
   const modalRef = useRef();
 
+  const PIE_COLORS = [
+    '#2563eb', '#60a5fa', '#0ea5e9', '#38bdf8', '#818cf8', '#6366f1', '#1e40af', '#9333ea', '#06b6d4', '#f472b6'
+  ];
+  const renderModalPieLabel = ({ name, weight, cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * (percent > 0.08 ? 0.6 : 1.1);
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    const displayName = name.length > 18 ? name.slice(0, 16) + '…' : name;
+    return (
+      <text
+        x={x}
+        y={y}
+        fill={percent > 0.08 ? '#222' : '#2563eb'}
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={percent > 0.08 ? 15 : 11}
+        fontWeight={percent > 0.08 ? 700 : 500}
+        stroke={percent > 0.08 ? 'white' : 'none'}
+        strokeWidth={percent > 0.08 ? 0.5 : 0}
+      >
+        {percent > 0.08 ? `${displayName}: ${(weight * 100).toFixed(1)}%` : `${(weight * 100).toFixed(1)}%`}
+      </text>
+    );
+  };
+
   // Used to check if backend is running
   const getHealthCheck = async () =>{
     const response = await fetch(`${API_BASE_URL}/api/health`);
     const data = await response.json();
-    setHealthData(data.status);
     console.log(data.status);
   }
 
@@ -309,7 +334,7 @@ function App() {
               onClick={() => setSelectedPortfolio(p)}
             >
               <div className="font-bold text-blue-700 text-lg mb-2 truncate w-full text-center">{p.name}</div>
-              <div className="text-gray-500 text-sm mb-2">{new Date(p.created_at).toLocaleString()}</div>
+              <div className="text-gray-500 text-sm mb-2">{new Date(p.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</div>
               <div className="text-blue-900 font-semibold">{p.stocks.length} stocks</div>
               <div className="text-green-600 font-bold mt-2">Projected Return: {p.projected_return ? (p.projected_return * 100).toFixed(2) + '%' : 'N/A'}</div>
             </div>
@@ -321,8 +346,33 @@ function App() {
             <div className="bg-white rounded-2xl shadow-2xl p-8 min-w-[340px] max-w-lg w-full relative">
               <button className="absolute top-2 right-2 text-2xl text-gray-400 hover:text-blue-600" onClick={() => setSelectedPortfolio(null)}>&times;</button>
               <h2 className="text-2xl font-bold text-blue-700 mb-4 text-center">{selectedPortfolio.name}</h2>
-              <div className="text-gray-500 text-center mb-2">{new Date(selectedPortfolio.created_at).toLocaleString()}</div>
+              <div className="text-gray-500 text-center mb-2">{new Date(selectedPortfolio.created_at).toLocaleString('en-US', { timeZone: 'America/New_York' })}</div>
               <div className="mb-4 text-center text-green-600 font-bold">Projected Return: {selectedPortfolio.projected_return ? (selectedPortfolio.projected_return * 100).toFixed(2) + '%' : 'N/A'}</div>
+              <div className="flex flex-col items-center mb-4">
+                <ResponsiveContainer width={320} height={320}>
+                  <PieChart>
+                    <Pie
+                      data={selectedPortfolio.stocks}
+                      dataKey="weight"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={120}
+                      label={renderModalPieLabel}
+                      labelLine={true}
+                      minAngle={3}
+                      paddingAngle={2}
+                    >
+                      {selectedPortfolio.stocks.map((entry, idx) => (
+                        <Cell key={`cell-${idx}`} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => `${(value * 100).toFixed(2)}%`} contentStyle={{ fontSize: 14 }} />
+                    <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 13, maxWidth: 320, whiteSpace: 'normal', textAlign: 'center' }} iconSize={14} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -356,7 +406,7 @@ function App() {
   if (isLoggedIn && !showExperienceSelection && !showIndustrySelection && !showStockSelection && !showPieChart && !showPortfolios) {
     return (
       <section className="min-h-screen flex flex-col items-center justify-center font-mono bg-gradient-to-r from-cyan-500 via-indigo-500 to-sky-500">
-        <h1 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">Welcome!</h1>
+        <h1 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">Welcome to Optivest!</h1>
         <div className="flex gap-4 mb-8">
           <button
             className="px-8 py-4 rounded-lg bg-white text-blue-700 font-bold text-2xl shadow-lg hover:bg-blue-100 transition"
@@ -382,7 +432,7 @@ function App() {
       <div className = "flex flex-row shadow-2xl rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md transition-all duration-300 hover:shadow-3xl hover:-translate-y-2 hover:scale-105" style={{height: '600px', minWidth: '900px'}}>
         {/* Login Container */}
         <div className = "flex flex-col items-center justify-center text-center gap-8 bg-white flex-1 rounded-2xl rounded-tr-none rounded-br-none"> 
-           <h1 className = "text-4xl font-bold"> {showRegister ? 'Register' : 'Welcome'}</h1>
+           <h1 className = "text-4xl font-bold"> {showRegister ? 'Register' : 'Welcome to Optivest'}</h1>
            
            {/* Username Input */}
            <div className = "flex flex-col text-2xl text-left gap-1">
