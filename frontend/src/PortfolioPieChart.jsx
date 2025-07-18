@@ -85,7 +85,7 @@ function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, o
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          stocks: allocations.map(a => ({
+          allocations: allocations.map(a => ({
             ...a,
             ...selectedStocks.find(s => s.symbol === a.symbol)
           })),
@@ -95,7 +95,7 @@ function PortfolioPieChart({ selectedStocks, onBack, onLogout, onNewPortfolio, o
       })
         .then(res => res.json())
         .then(data => {
-          if (data.message === 'Portfolio saved') {
+          if (data.message === 'Portfolio saved successfully') {
             setSaveStatus('Portfolio saved!');
           } else {
             setSaveStatus('Failed to save portfolio.');
