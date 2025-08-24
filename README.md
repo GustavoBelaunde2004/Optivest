@@ -128,8 +128,3 @@ The application uses Modern Portfolio Theory to optimize portfolios by:
 - Finding the efficient frontier of optimal portfolios
 - Incorporating correlation analysis between assets
 
-
-## 📄 License
-
-This project is open source and available under the MIT License.
-
